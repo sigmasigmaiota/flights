@@ -1,0 +1,237 @@
+---
+title: <span style="font-size:22px;">Tidying and Transforming Data</span>
+author: "Stephen Jones"
+date: "February 24, 2019"
+output:
+  html_document:
+    themes: "paper"
+    highlight: "pygments"
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    code_folding: hide
+    df_print: paged
+---
+***
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+###Create
+<style>
+div.gold { background-color:#fffcf3; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "gold">
+"Arrival.csv" is created and written to the working directory.
+</div>
+```{r message=FALSE, warning=FALSE,strip.white=TRUE}
+rm(list=ls())
+
+LosAngeles<-c(497,62,694,117)
+Phoenix<-c(221,12,4840,415)
+SanDiego<-c(212,20,383,65)
+SanFrancisco<-c(503,102,320,129)
+Seattle<-c(1841,305,201,61)
+status<-c("ontime","delayed","ontime","delayed")
+airline<-c("ALASKA","ALASKA","AMWEST","AMWEST")
+Arrival<-data.frame(airline,status,LosAngeles,Phoenix,SanDiego,SanFrancisco,Seattle)
+#create .csv file.
+write.csv(Arrival,"Arrival.csv")
+```
+***
+###Read
+<style>
+div.gold { background-color:#fffcf3; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "gold">
+"Arrival.csv" loads, "kableExtra" renders the table.
+</div>
+```{r warning=FALSE, message=FALSE, out.width="100%",strip.white=TRUE}
+#clear objects
+rm(list=ls())
+
+#read .csv, omit numbered column
+Arrival<-read.csv("Arrival.csv")[ ,2:8]
+
+#display
+require(kableExtra)
+arr<-knitr::kable(Arrival,"html",align='lcccccc')%>%
+  kable_styling("striped", full_width = F)
+arr
+
+```
+***
+###Transform {.tabset .tabset-fade .tabset-pills}
+<style>
+div.gold { background-color:#fffcf3; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "gold">
+Table 1 transforms via the gather function from tidyr, setting key as city and value as frequency; each city becomes a row with unique frequency values. Table 2 is created using the spread function, resulting in a column for each airline and pairs of observations for each city. Table 3 and Table 4 display on-time and delayed subsets of data built by the filter command. Various sums are calculated via mutate and sum commands and displayed in Table 5: flight sums by airline (linetotal), city (citytotal), and status (statustot), as well the combinations airline by city (linecitytot), status by city (statcitytot), and airline by status (linestattot).
+</div>
+
+####Table 1
+```{r warning=FALSE,message=FALSE,out.width="100%",strip.white=TRUE}
+require(tidyr)
+
+Arrival3<-gather(Arrival,'LosAngeles','Phoenix','SanDiego','SanFrancisco','Seattle',key='city',value='frequency')
+arr3<-knitr::kable(Arrival3,"html",align='lccc')%>%
+  kable_styling("striped", full_width = F)%>%
+  scroll_box(height="195px")
+arr3
+
+```
+***
+####Table 2
+```{r warning=FALSE,message=FALSE,out.width="100%",strip.white=TRUE}
+
+require(dplyr)
+
+Arrival4<-spread(Arrival3,airline,frequency)
+arr4<-knitr::kable(Arrival4,"html",align='lccc')%>%
+  kable_styling("striped",full_width = F)%>%
+  scroll_box(height="195px")
+arr4
+
+#Calculate percentage of flights which are delayed.
+delayednum<-sum(Arrival4$ALASKA[ which(Arrival4$status=="delayed") ])+sum(Arrival4$AMWEST[ which(Arrival4$status=="delayed") ])
+delayedden<-(sum(Arrival4$ALASKA)+sum(Arrival4$AMWEST))
+delayedpct<-round((delayednum/delayedden)*100,1)
+
+
+```
+***
+####Table 3
+```{r warning=FALSE,message=FALSE,out.width="100%",strip.white=TRUE, fig.cap="Subset, flights not delayed"}
+Arrival4ontime<-filter(Arrival4,status=="ontime")
+
+arr4ontime<-knitr::kable(Arrival4ontime,"html",align='lccc')%>%
+  kable_styling("striped",full_width = F)
+
+arr4ontime
+```
+***
+####Table 4
+```{r warning=FALSE,message=FALSE,out.width="100%",strip.white=TRUE, fig.cap="Subset, delayed flights only"}
+
+Arrival4delayed<-filter(Arrival4,status=="delayed")
+
+arr4delayed<-knitr::kable(Arrival4delayed,"html",align='lccc')%>%
+  kable_styling("striped",full_width = F)
+
+arr4delayed
+```
+
+***
+####Table 5
+```{r warning=FALSE,message=FALSE,fig.align="center",strip.white=TRUE, fig.cap="Table with calculated totals and means"}
+
+#add frequency total by airline
+Arrival3.5<-Arrival3%>%
+  group_by(airline)%>%
+  mutate(linetotal=sum(frequency))
+#add frequency total by city
+Arrival3.5<-Arrival3.5%>%
+  group_by(city)%>%
+  mutate(citytotal=sum(frequency))
+#add frequency total by city and airline
+Arrival3.5<-Arrival3.5%>%
+  group_by(airline,city)%>%
+  mutate(linecitytot=sum(frequency))
+#add frequency total by status
+Arrival3.5<-Arrival3.5%>%
+  group_by(status)%>%
+  mutate(statustot=sum(frequency))
+#add frequency total by status
+Arrival3.5<-Arrival3.5%>%
+  group_by(status,city)%>%
+  mutate(statcitytot=sum(frequency))
+#add frequency total by status and city
+Arrival3.5<-Arrival3.5%>%
+  group_by(status,city)%>%
+  mutate(statcitytot=sum(frequency))
+#add frequency total by status and airline
+Arrival3.5<-Arrival3.5%>%
+  group_by(status,airline)%>%
+  mutate(linestattot=sum(frequency))
+
+arr3<-knitr::kable(Arrival3.5,"html",align='lccccccccc')%>%
+  kable_styling("striped", full_width = T, font_size = 12)%>%
+  scroll_box(height="195px")
+arr3
+
+```
+
+***
+###Analyze {.tabset .tabset-fade .tabset-pills}
+<style>
+div.gold { background-color:#fffcf3; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "gold">
+Figure 1 shows that 13.3% of ALASKA flights were delayed, while 10.9% of AMWEST flights were delayed, with `r delayedpct`% of flights delayed overall.In Figure 2 we see that flying into San Franciso provedmost troublesome for both airlines, with 28.7% of AMWEST flights into San Francisco delayed and 16.9% of ALASKA flights into San Francisco delayed. Phoenix proved to be the least challanging to schedules with 5.2% and 7.9% of flights delayed for ALASKA and AMWEST, respectively. Figure 3 illustrates flight delay by city; 1 out of every 5 flights into San Francisco are delayed.<br><br>
+<strong>Conclusion:</strong> If given the option to choose among these cities for a tightly scheduled flight itinerary, <i>flying into San Francisco should be avoided if possible.</i>
+</div>
+
+####Figure 1
+```{r warning=FALSE,message=FALSE,strip.white=TRUE,fig.cap="Flight delay percentage by airline",out.width="100%"}
+
+airlinetable<-unique(Arrival3.5[c("airline","status","linetotal","linestattot")])
+airlinetable$statpct<-round((airlinetable$linestattot/airlinetable$linetotal)*100,1)
+airlinetable2<-airlinetable[ which(airlinetable$status=="delayed"),]
+
+require(ggplot2)
+p1<-ggplot(data=airlinetable2, aes(x = airline, y=statpct)) + 
+  geom_bar(stat="identity",fill="steelblue")+
+  geom_text(aes(label=statpct), vjust=1.6, color="white", size=3.5)+
+  ylab("percent delayed")+
+  theme_bw()
+
+require(grid)
+require(gridExtra)
+t1 <- tableGrob(airlinetable[c("airline","status","statpct")], theme=ttheme_default(base_size=10,padding=unit(c(4,4),"mm")),rows=NULL)
+
+grid.arrange(p1, t1, nrow=1)
+```
+
+
+***
+####Figure 2
+```{r warning=FALSE,message=FALSE,fig.align="center",strip.white=TRUE,fig.cap="Flight delay percentage by airline and city"}
+citytable<-unique(Arrival3.5[c("airline","status","city","frequency","linecitytot")])
+citytable$statpct<-round((citytable$frequency/citytable$linecitytot)*100,1)
+citytable2<-citytable[ which(citytable$status=="delayed"),]
+
+p1.1<-ggplot(data=citytable2, aes(x = airline, y=statpct,group=city)) + 
+  geom_bar(stat="identity",fill="steelblue")+
+  geom_text(aes(label=statpct), vjust=1.6, color="white", size=3.5)+
+  ylab("percent delayed")+
+  facet_grid(~city)+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 45,hjust=1))
+
+t1.1 <- tableGrob(citytable[c("airline","status","city","statpct")], theme=ttheme_default(base_size=8,padding=unit(c(1,3),"mm")),rows=NULL)
+
+grid.arrange(p1.1, t1.1, nrow=1, widths = 2:1)     
+
+```
+
+***
+####Figure 3
+```{r warning=FALSE,message=FALSE,fig.align="center",strip.white=TRUE,fig.cap="Percent of flights delayed by city"}
+
+totcitytable<-unique(Arrival3.5[c("city","status","citytotal","statcitytot")])
+totcitytable$citystatpct<-round((totcitytable$statcitytot/totcitytable$citytotal)*100,1)
+totcitytable2<-totcitytable[ which(totcitytable$status=="delayed"),]
+
+p1.2<-ggplot(data=totcitytable2, aes(x = city, y=citystatpct,group=city)) + 
+  geom_bar(stat="identity",fill="steelblue")+
+  geom_text(aes(label=citystatpct), vjust=1.6, color="white", size=3.5)+
+  ylab("percent delayed")+
+  theme_bw()
+
+t1.2<-tableGrob(totcitytable[c("city","status","citystatpct")],
+                theme=ttheme_default(base_size=10,
+                                     padding=unit(c(2,3),"mm")),rows=NULL)
+
+grid.arrange(p1.2, t1.2, nrow=1, widths = 2:1)   
+
+```
+
